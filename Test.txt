@@ -1,0 +1,1495 @@
+1) Practical 1 : Monoalphabetic Cipher
+Aim : Write a program to implement a Monoalphabetic Cipher in Python for
+encryption and decryption using a substitution key.
+
+import string
+
+letters = string.ascii_lowercase
+
+key = "qwertyuiopasdfghjklzxcvbnm"
+
+encrypt_dict = dict(zip(letters, key))
+decrypt_dict = dict(zip(key, letters))
+
+def encrypt(plaintext):
+    plaintext = plaintext.lower()
+    ciphertext = ""
+
+    for char in plaintext:
+        if char in encrypt_dict:
+            ciphertext += encrypt_dict[char]
+        else:
+            ciphertext += char
+
+    return ciphertext
+
+def decrypt(ciphertext):
+    ciphertext = ciphertext.lower()
+    plaintext = ""
+
+    for char in ciphertext:
+        if char in decrypt_dict:
+            plaintext += decrypt_dict[char]
+        else:
+            plaintext += char
+
+    return plaintext
+
+message = "hello world"
+
+encrypted = encrypt(message)
+decrypted = decrypt(encrypted)
+
+print("Original :", message)
+print("Encrypted:", encrypted)
+print("Decrypted:", decrypted)
+
+2) Practical 2 : Playfair Cipher
+B] Aim: To implement a Playfair Cipher in Python for encrypting and decrypting
+text using a key-based digraph substitution method.
+Code :
+
+def generate_key_matrix(key):
+    key = key.upper().replace("J", "I")
+    matrix = []
+    used = set()
+
+    for char in key:
+        if char not in used and char.isalpha():
+            used.add(char)
+            matrix.append(char)
+
+    for char in "ABCDEFGHIKLMNOPQRSTUVWXYZ":
+        if char not in used:
+            matrix.append(char)
+
+    return [matrix[i:i+5] for i in range(0, 25, 5)]
+
+def find_position(matrix, char):
+    for i in range(5):
+        for j in range(5):
+            if matrix[i][j] == char:
+                return i, j
+
+def prepare_text(text):
+    text = text.upper().replace("J", "I").replace(" ", "")
+    result = ""
+    i = 0
+
+    while i < len(text):
+        a = text[i]
+        b = text[i+1] if i+1 < len(text) else "X"
+
+        if a == b:
+            result += a + "X"
+            i += 1
+        else:
+            result += a + b
+            i += 2
+
+    if len(result) % 2 != 0:
+        result += "X"
+
+    return result
+
+def encrypt(text, matrix):
+    text = prepare_text(text)
+    cipher = ""
+
+    for i in range(0, len(text), 2):
+        a, b = text[i], text[i+1]
+
+        r1, c1 = find_position(matrix, a)
+        r2, c2 = find_position(matrix, b)
+
+        if r1 == r2:
+            cipher += matrix[r1][(c1+1)%5]
+            cipher += matrix[r2][(c2+1)%5]
+
+        elif c1 == c2:
+            cipher += matrix[(r1+1)%5][c1]
+            cipher += matrix[(r2+1)%5][c2]
+
+        else:
+            cipher += matrix[r1][c2]
+            cipher += matrix[r2][c1]
+
+    return cipher
+
+def decrypt(text, matrix):
+    plain = ""
+
+    for i in range(0, len(text), 2):
+        a, b = text[i], text[i+1]
+
+        r1, c1 = find_position(matrix, a)
+        r2, c2 = find_position(matrix, b)
+
+        if r1 == r2:
+            plain += matrix[r1][(c1-1)%5]
+            plain += matrix[r2][(c2-1)%5]
+
+        elif c1 == c2:
+            plain += matrix[(r1-1)%5][c1]
+            plain += matrix[(r2-1)%5][c2]
+
+        else:
+            plain += matrix[r1][c2]
+            plain += matrix[r2][c1]
+
+    return plain
+
+key = "keyword"
+
+matrix = generate_key_matrix(key)
+
+message = "hello world"
+
+encrypted = encrypt(message, matrix)
+decrypted = decrypt(encrypted, matrix)
+
+print("Key Matrix:")
+for row in matrix:
+    print(row)
+
+print("\nOriginal :", message)
+print("Encrypted:", encrypted)
+print("Decrypted:", decrypted)
+
+3) Practical 3 : Hill Cipher
+C] Aim: To implement a Hill Cipher in Python for encrypting and decrypting text
+using matrix-based substitution
+Code :
+
+import numpy as np
+
+def text_to_numbers(text):
+    return [ord(char) - ord('A') for char in text]
+
+def numbers_to_text(numbers):
+    return ''.join(chr(num % 26 + ord('A')) for num in numbers)
+
+def encrypt(plaintext, key_matrix):
+    plaintext = plaintext.upper().replace(" ", "")
+
+    if len(plaintext) % 2 != 0:
+        plaintext += 'X'
+
+    cipher_text = ""
+
+    for i in range(0, len(plaintext), 2):
+        pair = text_to_numbers(plaintext[i:i+2])
+        pair_vector = np.array(pair).reshape(2, 1)
+
+        result = np.dot(key_matrix, pair_vector) % 26
+        cipher_text += numbers_to_text(result.flatten())
+
+    return cipher_text
+
+def mod_inverse(a, m):
+    for i in range(1, m):
+        if (a * i) % m == 1:
+            return i
+    return None
+
+def decrypt(ciphertext, key_matrix):
+
+    det = int(round(np.linalg.det(key_matrix)))
+    det = det % 26
+
+    det_inv = mod_inverse(det, 26)
+
+    adj = np.array([
+        [key_matrix[1][1], -key_matrix[0][1]],
+        [-key_matrix[1][0], key_matrix[0][0]]
+    ])
+
+    inv_key = (det_inv * adj) % 26
+
+    plain_text = ""
+
+    for i in range(0, len(ciphertext), 2):
+        pair = text_to_numbers(ciphertext[i:i+2])
+        pair_vector = np.array(pair).reshape(2, 1)
+
+        result = np.dot(inv_key, pair_vector) % 26
+        plain_text += numbers_to_text(result.flatten())
+
+    return plain_text
+
+key_matrix = np.array([
+    [3, 3],
+    [2, 5]
+])
+
+message = "HELLO"
+
+encrypted = encrypt(message, key_matrix)
+decrypted = decrypt(encrypted, key_matrix)
+
+print("Original :", message)
+print("Encrypted:", encrypted)
+print("Decrypted:", decrypted)
+
+
+4) Practical 4 : Vigenère Cipher
+D] Aim : To implement a Vigenère Cipher in Python for encrypting and decrypting
+text using a repeating keyword.
+Code :
+
+def generate_key(text, key):
+    key = list(key)
+
+    if len(text) == len(key):
+        return "".join(key)
+
+    else:
+        for i in range(len(text) - len(key)):
+            key.append(key[i % len(key)])
+
+    return "".join(key)
+
+def encrypt(plaintext, key):
+    plaintext = plaintext.upper().replace(" ", "")
+    key = generate_key(plaintext, key.upper())
+
+    cipher_text = ""
+
+    for i in range(len(plaintext)):
+        p = ord(plaintext[i]) - ord('A')
+        k = ord(key[i]) - ord('A')
+
+        c = (p + k) % 26
+        cipher_text += chr(c + ord('A'))
+
+    return cipher_text
+
+def decrypt(ciphertext, key):
+    key = generate_key(ciphertext, key.upper())
+
+    plain_text = ""
+
+    for i in range(len(ciphertext)):
+        c = ord(ciphertext[i]) - ord('A')
+        k = ord(key[i]) - ord('A')
+
+        p = (c - k + 26) % 26
+        plain_text += chr(p + ord('A'))
+
+    return plain_text
+
+message = "HELLO WORLD"
+key = "KEY"
+
+encrypted = encrypt(message, key)
+decrypted = decrypt(encrypted, key)
+
+print("Original :", message)
+print("Key :", key)
+print("Encrypted:", encrypted)
+print("Decrypted:", decrypted)
+
+
+5)  Practical 5 : Vernam Cipher
+E] Aim : To implement a Vernam Cipher in Python for encrypting and decrypting
+text using a one-time key and XOR operation.
+
+def text_to_binary(text):
+    return ''.join(format(ord(c), '08b') for c in text)
+
+def binary_to_text(binary):
+    chars = [binary[i:i+8] for i in range(0, len(binary), 8)]
+    return ''.join(chr(int(b, 2)) for b in chars)
+
+def xor(a, b):
+    return ''.join('0' if i == j else '1' for i, j in zip(a, b))
+
+def encrypt(plaintext, key):
+    binary_text = text_to_binary(plaintext)
+    binary_key = text_to_binary(key)
+
+    cipher_binary = xor(binary_text, binary_key)
+
+    return cipher_binary
+
+def decrypt(cipher_binary, key):
+    binary_key = text_to_binary(key)
+
+    plain_binary = xor(cipher_binary, binary_key)
+
+    return binary_to_text(plain_binary)
+
+message = "HELLO"
+key = "XMCKL"
+
+encrypted = encrypt(message, key)
+decrypted = decrypt(encrypted, key)
+
+print("Original :", message)
+print("Key :", key)
+print("Encrypted (binary):", encrypted)
+print("Decrypted:", decrypted)
+
+
+6) Practical 6 : RSA Algorithm
+
+import math
+
+def gcd(a, b):
+    while b:
+        a, b = b, a % b
+    return a
+
+def mod_inverse(e, phi):
+    for d in range(1, phi):
+        if (e * d) % phi == 1:
+            return d
+
+def generate_keys():
+    p = 17
+    q = 11
+
+    n = p * q
+    phi = (p - 1) * (q - 1)
+
+    e = 2
+
+    while gcd(e, phi) != 1:
+        e += 1
+
+    d = mod_inverse(e, phi)
+
+    return (e, n), (d, n)
+
+def encrypt(public_key, plaintext):
+    e, n = public_key
+    return [pow(ord(char), e, n) for char in plaintext]
+
+def decrypt(private_key, ciphertext):
+    d, n = private_key
+    return ''.join(chr(pow(char, d, n)) for char in ciphertext)
+
+public_key, private_key = generate_keys()
+
+message = "HELLO"
+
+encrypted = encrypt(public_key, message)
+decrypted = decrypt(private_key, encrypted)
+
+print("Public Key :", public_key)
+print("Private Key:", private_key)
+print("Original :", message)
+print("Encrypted :", encrypted)
+print("Decrypted :", decrypted)
+
+7)  Practical 7 : Caesar Cipher
+Aim : To implement a Caesar Cipher in Python for encrypting and decrypting text
+using a fixed shift value.
+Code :
+
+def encrypt(plaintext, shift):
+    result = ""
+
+    for char in plaintext:
+        if char.isalpha():
+
+            base = ord('A') if char.isupper() else ord('a')
+
+            result += chr((ord(char) - base + shift) % 26 + base)
+
+        else:
+            result += char
+
+    return result
+
+def decrypt(ciphertext, shift):
+    return encrypt(ciphertext, -shift)
+
+message = "Hello World"
+shift = 3
+
+encrypted = encrypt(message, shift)
+decrypted = decrypt(encrypted, shift)
+
+print("Original :", message)
+print("Shift :", shift)
+print("Encrypted:", encrypted)
+print("Decrypted:", decrypted)
+
+
+8) Practical 8 : Feistel Cipher
+Aim : To implement a Feistel Cipher in Python for encrypting and decrypting data
+using symmetric key rounds.
+Code :
+
+def xor(a, b):
+    return format(int(a, 2) ^ int(b, 2), '04b')
+
+def f(right, key):
+    return xor(right, key)
+
+def encrypt(plaintext, keys):
+
+    pt = format(ord(plaintext), '08b')
+
+    left = pt[:4]
+    right = pt[4:]
+
+    for key in keys:
+        new_left = right
+        new_right = xor(left, f(right, key))
+
+        left, right = new_left, new_right
+
+    return left + right
+
+def decrypt(ciphertext, keys):
+
+    left = ciphertext[:4]
+    right = ciphertext[4:]
+
+    for key in reversed(keys):
+        new_right = left
+        new_left = xor(right, f(left, key))
+
+        left, right = new_left, new_right
+
+    binary = left + right
+
+    return chr(int(binary, 2))
+
+keys = ["1010", "0101"]
+
+message = "A"
+
+encrypted = encrypt(message, keys)
+decrypted = decrypt(encrypted, keys)
+
+print("Original :", message)
+print("Encrypted (binary):", encrypted)
+print("Decrypted:", decrypted)
+
+---------------------------------------
+FTP
+
+Practical 15: Simulate FTP using TCP in Cisco Packet Tracer
+Aim
+
+Client aur Server ke beech TCP protocol use karke FTP communication establish karna.
+
+Step-by-Step Full Setup
+1. Devices Add Karo
+
+Packet Tracer open karo aur ye devices drag-drop karo:
+
+1 × PC-PT
+1 × Switch (2960)
+1 × Server-PT
+
+Topology exactly aise hogi:
+
+PC → Switch → Server
+
+2. Connections Lagao
+Copper Straight Through Cable use karo
+
+Connect:
+
+PC FastEthernet0 → Switch FastEthernet0/1
+Server FastEthernet0 → Switch FastEthernet0/2
+3. IP Address Configure Karo
+A) PC Configuration
+PC pe click karo
+
+Desktop → IP Configuration
+
+Fill:
+
+Field	Value
+IP Address	192.168.1.2
+Subnet Mask	255.255.255.0
+Default Gateway	192.168.1.1
+B) Server Configuration
+Server pe click karo
+
+Desktop → IP Configuration
+
+Fill:
+
+Field	Value
+IP Address	192.168.1.1
+Subnet Mask	255.255.255.0
+Default Gateway	192.168.1.1
+4. FTP Service Enable Karo
+Server pe click karo
+
+Services → FTP
+
+FTP ON karo
+
+Phir user create karo:
+
+Username	Password
+cisco	cisco
+
+Add button dabao.
+
+Ab FTP server ready hai.
+
+5. Connectivity Check Karo
+PC pe jao
+
+Desktop → Command Prompt
+
+Command likho:
+
+ping 192.168.1.1
+Reply aaye to connection successful hai.
+
+Example:
+
+Reply from 192.168.1.1
+6. FTP Connection Establish Karo
+Same Command Prompt me type karo:
+ftp 192.168.1.1
+
+Output aayega:
+
+Trying to connect...192.168.1.1
+Connected to 192.168.1.1
+220-Welcome to PT Ftp server
+7. Username Password Enter Karo
+
+Username:
+
+cisco
+
+Password:
+
+cisco
+
+Successful login output:
+
+230-Logged in
+(passive mode On)
+ftp>
+
+Matlab FTP successfully connect ho gaya.
+
+8. FTP Commands Test Karo
+Files dekhne ke liye
+dir
+
+ya
+
+ls
+File upload karne ke liye
+put filename.txt
+File download karne ke liye
+get filename.txt
+TCP Working Explanation
+
+FTP TCP protocol use karta hai.
+
+FTP ka Port Number
+Service	Port
+FTP Control	21
+FTP Data	20
+FTP me TCP ka Working
+1. TCP Three-Way Handshake
+
+Connection establish hone se pehle:
+
+SYN
+SYN-ACK
+ACK
+
+exchange hota hai.
+
+Isse reliable connection banta hai.
+
+2. Authentication
+
+Client:
+
+Username bhejta hai
+Password bhejta hai
+
+Server verify karta hai.
+
+3. Data Transfer
+
+TCP reliable delivery provide karta hai:
+
+Error checking
+Packet ordering
+Retransmission
+4. Connection Close
+
+Kaam complete hone ke baad TCP connection terminate hota hai.
+
+Simulation Mode Me Kaise Dekhe
+Bottom me “Simulation” mode select karo
+
+Phir:
+
+FTP packet generate karo
+Auto Capture/Play dabao
+
+Tum dekh paoge:
+
+TCP handshake
+FTP login packets
+ACK packets
+Data transfer
+Expected Output
+C:\>ftp 192.168.1.1
+
+Connected to 192.168.1.1
+220-Welcome to PT Ftp server
+
+Username: cisco
+Password:
+
+230-Logged in
+ftp>
+Viva Questions
+Q1. FTP ka full form?
+
+File Transfer Protocol
+
+Q2. FTP kaunsi layer pe kaam karta hai?
+
+Application Layer
+
+Q3. FTP TCP ya UDP use karta hai?
+
+TCP
+
+Q4. FTP ka default port?
+
+21
+
+Q5. TCP reliable kaise hai?
+
+Acknowledgement aur retransmission use karta hai.
+
+-------------------------
+
+
+Practical 14 : DHCP Server and Clients + DNS Setup
+Aim
+
+Packet Tracer me DHCP Server aur DNS configure karna taaki:
+
+Clients ko automatic IP mile
+Domain name se website/access resolve ho
+Network Topology
+
+Devices:
+
+1 Server-PT
+1 Switch 2960
+3 PCs
+
+Connection:
+
+PCs → Switch → Server
+
+Step 1: Devices Add Karo
+
+Packet Tracer open karo aur add karo:
+
+PC0
+PC1
+PC2
+Switch0 (2960)
+Server0
+Step 2: Cable Connections
+Copper Straight Through cable use karo
+
+Connect:
+
+Device	Port	To	Port
+PC0	FastEthernet0	Switch	Fa0/1
+PC1	FastEthernet0	Switch	Fa0/2
+PC2	FastEthernet0	Switch	Fa0/3
+Server0	FastEthernet0	Switch	Fa0/4
+Step 3: Server IP Configuration
+Server pe click karo
+
+Desktop → IP Configuration
+
+Fill:
+
+Field	Value
+IP Address	192.168.1.4
+Subnet Mask	255.255.255.0
+Default Gateway	192.168.1.1
+Step 4: DHCP Setup
+Server pe click karo
+
+Services → DHCP
+
+DHCP Service = ON
+Pool Create Karo
+
+Fill these values:
+
+Field	Value
+Pool Name	LANPOOL
+Default Gateway	192.168.1.1
+DNS Server	192.168.1.4
+Start IP Address	192.168.1.10
+Subnet Mask	255.255.255.0
+Maximum Users	50
+Add button dabao
+DHCP Working
+
+Ab server automatically PCs ko IP assign karega.
+
+Example:
+
+PC0 → 192.168.1.10
+PC1 → 192.168.1.11
+PC2 → 192.168.1.12
+Step 5: DNS Setup (IMPORTANT)
+
+Tumhari image me DNS bhi configured hai.
+
+Server pe click karo
+
+Services → DNS
+
+DNS Service = ON
+DNS Record Add Karo
+
+Fill:
+
+Field	Value
+Name	google.com
+Type	A Record
+Address	8.8.8.8
+Add button dabao
+
+Ye exactly image wala setup hai.
+
+DNS Kya Karta Hai?
+
+DNS:
+
+Domain name ko IP me convert karta hai
+
+Example:
+
+google.com → 8.8.8.8
+Step 6: PCs ko Automatic IP Dena
+Har PC pe jao
+
+Desktop → IP Configuration
+
+DHCP select karo
+
+Automatic IP aa jayega.
+
+Step 7: Verify IP
+PC0 pe
+
+Desktop → Command Prompt
+
+Type:
+
+ipconfig
+
+Output:
+
+IP Address.........: 192.168.1.10
+Subnet Mask........: 255.255.255.0
+Default Gateway....: 192.168.1.1
+Step 8: Ping Test
+Server ping karo
+ping 192.168.1.4
+
+Reply aaye matlab successful.
+
+Step 9: DNS Test
+PC command prompt me type karo:
+ping google.com
+
+DNS resolve karega:
+
+Pinging google.com [8.8.8.8]
+
+Matlab DNS successfully work kar raha hai.
+
+DHCP Working Explanation
+
+DHCP automatic IP assignment karta hai.
+
+DHCP Process (DORA)
+1. Discover
+
+Client DHCP server ko search karta hai.
+
+2. Offer
+
+Server IP offer karta hai.
+
+3. Request
+
+Client requested IP accept karta hai.
+
+4. Acknowledgement
+
+Server confirmation bhejta hai.
+
+DNS Working Explanation
+
+User type karta hai:
+
+google.com
+
+DNS server uska IP batata hai:
+
+8.8.8.8
+Phir communication IP ke through hota hai.
+Simulation Mode Me Kaise Dekhe
+
+Bottom me:
+
+Simulation Mode ON karo
+
+Phir:
+
+DHCP packets observe karo
+DNS request observe karo
+
+Tum dekhoge:
+
+DHCP Discover
+DHCP Offer
+DHCP Request
+DHCP ACK
+DNS Query
+DNS Response
+Expected Output
+DHCP
+IP Address : 192.168.1.10
+DNS
+Pinging google.com [8.8.8.8]
+Viva Questions
+Q1. DHCP ka full form?
+
+Dynamic Host Configuration Protocol
+
+Q2. DHCP ka use?
+
+Automatic IP assignment
+
+Q3. DNS ka full form?
+
+Domain Name System
+
+Q4. DNS kya karta hai?
+
+Domain name ko IP address me convert karta hai.
+
+Q5. DHCP ka port number?
+
+67 and 68
+
+Q6. DNS ka port number?
+53
+
+
+----------------------------------------------------------------------------
+
+
+DHCP Server and Clients
+Kya hota hai?
+
+DHCP ka full form:
+
+Dynamic Host Configuration Protocol
+
+Ye automatically IP address assign karta hai.
+
+Matlab:
+
+manually IP dene ki zarurat nahi
+server khud IP deta hai
+Logic
+Server acts as DHCP server
+Clients request IP
+Server assigns IP automatically
+Devices Needed
+1 Server
+1 Switch
+2 or 3 PCs
+Step 1 : Connections
+
+Use:
+
+Copper Straight Through
+
+Connect:
+
+PC → Switch
+Server → Switch
+
+Sab green hona chahiye.
+
+Step 2 : Server IP manually do
+
+Server pe click:
+
+Desktop → IP Configuration
+
+Fill:
+
+IP Address : 192.168.1.4
+Subnet Mask : 255.255.255.0
+Step 3 : DHCP Service ON karo
+
+Server:
+
+Services → DHCP
+
+Fill:
+
+Pool Name : LAN
+Default Gateway : 192.168.1.1
+DNS Server : 192.168.1.1
+Start IP Address : 192.168.1.10
+Subnet Mask : 255.255.255.0
+Maximum Users : 50
+
+Then:
+
+Service : ON
+
+Click:
+
+Save / Add
+Step 4 : PC ko DHCP pe rakho
+
+PC pe click:
+
+Desktop → IP Configuration
+
+Select:
+
+DHCP
+
+Automatically IP aa jayega.
+
+Example:
+
+192.168.1.10
+192.168.1.11
+PDU kaise dikhana?
+Simulation Mode
+
+Bottom right:
+
+Simulation
+Add Simple PDU
+
+Click:
+
+Add Simple PDU
+
+Then:
+
+PC → Server
+Packet Flow
+PC sends DHCP request
+Server assigns IP
+PC receives IP
+Ma’am ko explanation
+In DHCP, the server automatically assigns IP addresses to clients.
+Clients send a request for IP configuration.
+The DHCP server provides IP address, subnet mask, and other network details automatically.
+Agar ma’am pooche DHCP kyun use karte?
+DHCP reduces manual configuration and avoids IP conflicts.
+
+---------------------------------------------------------------------------------
+
+COMPLETE PRACTICAL PERFORMANCE (REAL EXECUTION)  wireshark
+PART 1 — Wireshark Open Karna
+Step 1
+
+Desktop par jao.
+
+Step 2
+
+Open:
+
+Wireshark
+
+Double click karo.
+
+PART 2 — Interface Select Karna
+
+Wireshark khulte hi screen par:
+
+Wi-Fi
+Ethernet
+
+dikhega.
+
+Step 3
+Agar internet Wi-Fi se chal raha:
+
+Wi-Fi select karo.
+
+Agar LAN cable:
+
+Ethernet select karo.
+
+IMPORTANT
+
+Jis interface ke saamne:
+
+blue/green graph move ho raha ho
+
+Wahi select karna hai.
+
+PART 3 — Packet Capture Start
+Step 4
+
+Wi-Fi par DOUBLE CLICK karo.
+
+Ab kya hoga?
+
+Screen par continuously packets aane lagenge.
+
+Rows fast fast move hongi.
+
+Yehi packet capture hai.
+
+PART 4 — Internet Traffic Generate Karna
+
+Ab packet generate karne hain.
+
+Step 5
+
+Browser open karo:
+
+Chrome
+
+ya
+
+Edge
+Step 6
+
+Address bar mein likho:
+
+google.com
+
+Enter dabao.
+
+Step 7
+
+Ab:
+
+youtube.com
+
+open karo.
+
+Step 8
+
+1–2 websites aur open karo.
+
+IMPORTANT
+
+Ab Wireshark mein bahut saare packets aa rahe honge.
+
+PART 5 — Capture Stop Karna
+Step 9
+
+Wireshark par wapas jao.
+
+Top par:
+🟥 red color stop button hoga.
+
+Uspar click karo.
+
+Result
+
+Packets ruk jayenge.
+
+PART 6 — DNS Filter Lagana
+Step 10
+
+Top filter bar mein click karo.
+
+Likho:
+
+dns
+
+Enter dabao.
+
+Result
+
+Ab sirf DNS packets dikhenge.
+
+PART 7 — DNS Packet Open Karna
+Step 11
+
+Kisi bhi DNS packet par click karo.
+
+Step 12
+
+Middle section mein:
+
+Domain Name System
+
+expand karo.
+
+Examiner ko bolo:
+
+“Sir this shows DNS query and response.”
+
+Yahan kya dikhega?
+Query Name
+Website Name
+IP Address
+
+Example:
+
+google.com
+PART 8 — TCP Filter Lagana
+Step 13
+
+Filter bar clear karo.
+
+Likho:
+
+tcp
+
+Enter.
+
+Result
+
+Sirf TCP packets.
+
+PART 9 — TCP Packet Analyze
+Step 14
+
+Koi TCP packet click karo.
+
+Expand:
+
+Transmission Control Protocol
+Examiner ko bolo:
+
+“Sir this is TCP layer.”
+
+Show:
+Source Port
+Destination Port
+Sequence Number
+ACK Number
+PART 10 — IP Layer Analyze
+Step 15
+
+Same packet mein expand:
+
+Internet Protocol Version 4
+Show:
+Source IP
+Destination IP
+Examiner ko bolo:
+
+“Sir this is source and destination IP address.”
+
+PART 11 — Ethernet Layer Analyze
+Step 16
+
+Expand:
+
+Ethernet II
+Show:
+Source MAC
+Destination MAC
+PART 12 — HTTP Filter
+Step 17
+
+Filter clear karo.
+
+Likho:
+
+http
+
+Enter.
+
+Agar packets nahi aaye?
+
+Normal hai.
+
+Modern websites HTTPS use karti hain.
+
+Toh examiner ko bolo:
+“Sir HTTPS encrypted traffic is being used.”
+
+PART 13 — Save File
+Step 18
+
+Top menu:
+
+File → Save As
+Step 19
+
+Name:
+
+capture.pcapng
+
+Save.
+
+PRACTICAL COMPLETE ✅
+EXACT VIVA ANSWERS
+Q. Wireshark kya hai?
+
+Network packet analyzer tool.
+
+Q. DNS kya hai?
+
+Domain Name System.
+
+Q. TCP full form?
+
+Transmission Control Protocol.
+
+Q. MAC Address kaha hota hai?
+
+Ethernet layer mein.
+
+Q. IP Address kaha hota hai?
+
+IP layer mein.
+
+
+-----------------------------------------------------------------------
+Wireshark Practical Explanation (Hinglish + English)
+Introduction
+
+“Good morning ma’am.
+Today I am performing a practical on Wireshark.
+Wireshark is a network protocol analyzer tool used to capture, monitor, and analyze network packets in real time.”
+
+Objective
+
+“The objective of this practical is:
+
+To capture live network packets
+Analyze different protocols like DNS, TCP, HTTP
+Understand packet communication between source and destination systems.”
+Step 1 — Installing Wireshark
+
+“First, I installed Wireshark software.
+
+During installation, Npcap was also installed because Wireshark requires Npcap to capture network traffic from the network interface.”
+
+Explain:
+Npcap allows packet capturing.
+Without Npcap, Wireshark cannot monitor packets.
+Step 2 — Selecting Network Interface
+
+“After opening Wireshark, I selected the active network interface.”
+
+Example:
+Wi-Fi
+Ethernet
+
+“I selected Wi-Fi because my internet connection is running through Wi-Fi.”
+
+Explain:
+
+“The interface which shows live traffic graph is considered the active interface.”
+
+Step 3 — Starting Packet Capture
+
+“Then I started packet capture by double-clicking on the Wi-Fi interface.”
+
+Explain:
+
+“After starting capture, Wireshark began collecting packets in real time.”
+
+Packets displayed:
+
+Source Address
+Destination Address
+Protocol
+Packet Length
+Information
+Step 4 — Generating Traffic
+
+“To generate network traffic, I opened a browser and visited websites like Google and YouTube.”
+
+Explain:
+
+“When websites are opened, the system sends and receives packets through the network.
+Wireshark captures all these packets.”
+
+Step 5 — Applying Filters
+
+“Since there are many packets, filters are used to analyze specific protocols.”
+
+DNS Filter
+
+“I applied the filter:
+
+dns
+
+This displays only DNS packets.”
+
+Explain:
+
+“DNS converts domain names into IP addresses.”
+
+Example:
+
+google.com → IP Address
+TCP Filter
+
+“I applied:
+
+tcp
+
+to display TCP packets.”
+
+Explain:
+
+“TCP is a reliable connection-oriented protocol used for secure data transmission.”
+
+TCP shows:
+Source Port
+Destination Port
+Sequence Number
+ACK Number
+HTTP Filter
+
+“I applied:
+
+http
+
+to display HTTP traffic.”
+
+Explain:
+
+“HTTP is used for web communication between browser and server.”
+
+Packet Analysis
+
+“After selecting a packet, Wireshark displays detailed protocol layers.”
+
+Ethernet Layer
+
+“In Ethernet II layer, we can see:
+
+Source MAC Address
+Destination MAC Address”
+Explain:
+
+“MAC address uniquely identifies a device in a local network.”
+
+IP Layer
+
+“In Internet Protocol Version 4 layer, we can see:
+
+Source IP Address
+Destination IP Address”
+Explain:
+
+“IP address identifies devices over a network or internet.”
+
+TCP Layer
+
+“In TCP layer, we can observe:
+
+Port numbers
+Sequence number
+Acknowledgement number”
+Explain:
+
+“These values help in reliable communication and packet ordering.”
+
+DNS Layer
+
+“In DNS layer, we can observe:
+
+Query Name
+Response Address”
+Explain:
+
+“DNS resolves website names into machine-readable IP addresses.”
+
+Saving Capture File
+
+“Finally, I saved the captured packets using:
+File → Save As
+
+The file is saved with extension:
+
+.pcapng
+```”
+
+---
+
+# Conclusion
+.pcapng
+```”
+
+---
+
+# Conclusion
+
+“From this practical, I learned:
+- How network packets are captured
+- How protocols work
+- How to analyze DNS, TCP, HTTP packets
+- How communication happens between systems over a network.”
+
+---
+
+# Short Conclusion (Easy Version)
+
+“This practical helped me understand real-time network communication and packet analysis using Wireshark.”
+
+---
+
+# Viva Ready One-Line Answers
+
+## What is Wireshark?
+“Wireshark is a packet analyzer tool.”
+
+---
+
+## What is DNS?
+“DNS converts domain names into IP addresses.”
+
+---
+
+## What is TCP?
+“TCP is a reliable communication protocol.”
+
+---
+
+## What is HTTP?
+“HTTP is used for web communication.”
+
+---
+
+## What is a Packet?
+“A packet is a small unit of data transmitted over a network.”
+
+---
+
+## What is MAC Address?
+“MAC address is the physical address of a device.”
+
+---
+
+## What is IP Address?
+“IP address identifies a device on a network.”
